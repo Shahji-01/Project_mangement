@@ -6,6 +6,7 @@ import dns from "dns";
 import userRouter from "./routes/User.route.js";
 import cookieParser from "cookie-parser";
 import projectRouter from "./routes/project.route.js";
+import taskRouter from "./routes/task.route.js";
 
 dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
 dns.setDefaultResultOrder("ipv4first");
@@ -39,6 +40,7 @@ connection()
 
 app.use("/api/v1/auth", userRouter);
 app.use("/api/v1/projects", projectRouter);
+app.use("/api/v1/task", taskRouter);
 
 app.use((err, req, res, next) => {
   return res.status(err.statusCode || 500).json({
