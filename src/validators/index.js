@@ -149,6 +149,28 @@ const updateSubTaskValidator = () => {
       .toBoolean(),
   ];
 };
+const createNoteValidator = () => {
+  return [
+    body("content")
+      .trim()
+      .notEmpty()
+      .withMessage("Content is required")
+      .isLength({ min: 1 })
+      .withMessage("Content cannot be empty"),
+  ];
+};
+
+const updateNoteValidator = () => {
+  return [
+    body("content")
+      .trim()
+      .notEmpty()
+      .withMessage("Content is required")
+      .isLength({ min: 1 })
+      .withMessage("Content cannot be empty"),
+  ];
+};
+
 export {
   addMemberToProjectValidator,
   createProjectValidator,
@@ -160,4 +182,6 @@ export {
   createTaskValidator,
   createSubTaskValidator,
   updateSubTaskValidator,
+  createNoteValidator,
+  updateNoteValidator,
 };

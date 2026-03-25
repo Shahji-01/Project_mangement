@@ -8,11 +8,12 @@ import {
   sendMail,
 } from "../utils/mailgen.js";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshToken = AsyncHandler(async (UserId) => {
   const user = await User.findById(UserId);
   const accessToken = user.generateAccessToken();
-  const refreshToken = user.generateRefershToken();
+  const refreshToken = user.generateRefreshToken();
   user.refreshToken = refreshToken;
   await user.save({ validateBeforeSave: false });
   return { accessToken, refreshToken };
@@ -23,7 +24,7 @@ const registerUser = AsyncHandler(async (req, res, next) => {
 
   const existuser = await User.findOne({ $or: [{ email }, { username }] });
   if (existuser) {
-    throw new ApiError(200, "User already exits", []);
+    throw new ApiError(409, "User already exists", []);
   }
   const newUser = new User({
     email,
@@ -70,7 +71,7 @@ const registerUser = AsyncHandler(async (req, res, next) => {
 const loginUser = AsyncHandler(async (req, res, next) => {
   const { email, password, username } = req.body;
 
-  if (!username || !email) {
+  if (!username && !email) {
     throw new ApiError(400, "Username or email is required");
   }
   const user = await User.findOne({ $or: [{ email }, { username }] });
@@ -177,16 +178,16 @@ const resendEmailVerification = AsyncHandler(async (req, res, next) => {
   }
 
   const { unHashToken, hashToken, tokenExpiry } =
-    newUser.generateTemporaryToken();
-  newUser.emailVerificationToken = hashToken;
-  newUser.emailVerificationExpiry = tokenExpiry;
-  await newUser.save({ validateBeforeSave: false });
+    user.generateTemporaryToken();
+  user.emailVerificationToken = hashToken;
+  user.emailVerificationExpiry = tokenExpiry;
+  await user.save({ validateBeforeSave: false });
 
   const options = {
-    email: newUser?.email,
+    email: user?.email,
     subject: "Pls verify your email",
     mailgenContent: emailVerificatioMail(
-      newUser.username,
+      user.username,
       `${req.protocol}://${req.get("host")}/api/v1/user/verify-email/${unHashToken}`,
     ),
   };
@@ -237,7 +238,7 @@ const forgotPasswordRequest = AsyncHandler(async (req, res, next) => {
     throw new ApiError(404, "User does't exists");
   }
   const { unHashToken, hashToken, tokenExpiry } =
-    await user.generateTemporaryToken();
+    user.generateTemporaryToken();
   user.forgotPasswordToken = hashToken;
   user.forgotPasswordExpiry = tokenExpiry;
 
@@ -270,7 +271,7 @@ const resetForgotPassword = AsyncHandler(async (req, res, next) => {
     },
   });
   if (!user) {
-    throw new ApiError(489, "Token is invalid  or expired");
+    throw new ApiError(400, "Token is invalid or expired");
   }
   user.forgotPasswordToken = undefined;
   user.forgotPasswordExpiry = undefined;

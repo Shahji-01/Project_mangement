@@ -4,6 +4,9 @@ import ApiResponse from "../utils/apiResponse.js";
 import ApiError from "../utils/apiError.js";
 import Project from "../models/project.model.js";
 import ProjectMember from "../models/projectmember.model.js";
+import Task from "../models/task.model.js";
+import SubTask from "../models/subtask.model.js";
+import Note from "../models/note.model.js";
 import mongoose from "mongoose";
 import { AvailableUserRole, UserRoleEnum } from "../utils/constant.js";
 
@@ -44,8 +47,8 @@ const updateProject = AsyncHandler(async (req, res) => {
     throw new ApiError(404, "Project not found");
   }
   return res
-    .status(202)
-    .json(new ApiResponse(201, "Project update successfully     "));
+    .status(200)
+    .json(new ApiResponse(200, "Project updated successfully"));
 });
 const deleteProject = AsyncHandler(async (req, res) => {
   const { projectId } = req.params;
@@ -53,9 +56,18 @@ const deleteProject = AsyncHandler(async (req, res) => {
   if (!project) {
     throw new ApiError(404, "Project not found");
   }
+  // Recursive deletion of related documents
+  const projectTasks = await Task.find({ project: projectId }).distinct("_id");
+  await Promise.all([
+    ProjectMember.deleteMany({ project: projectId }),
+    Task.deleteMany({ project: projectId }),
+    SubTask.deleteMany({ task: { $in: projectTasks } }),
+    Note.deleteMany({ project: projectId }),
+  ]);
+
   return res
-    .status(202)
-    .json(new ApiResponse(201, "Project delete successfully     "));
+    .status(200)
+    .json(new ApiResponse(200, "Project deleted successfully"));
 });
 const getProjects = AsyncHandler(async (req, res) => {
   const projects = await ProjectMember.aggregate([
@@ -132,14 +144,12 @@ const addMembersToProject = AsyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
-  await ProjectMember.findByIdAndUpdate(
+  await ProjectMember.findOneAndUpdate(
     {
-      user: new mongoose.Types.ObjectId(user._id),
-      project: new mongoose.Types.ObjectId(projectId),
+      user: user._id,
+      project: projectId,
     },
     {
-      user: new mongoose.Types.ObjectId(user._id),
-      project: new mongoose.Types.ObjectId(projectId),
       role,
     },
     {
@@ -169,7 +179,7 @@ const getProjectMembers = AsyncHandler(async (req, res) => {
         localField: "user",
         foreignField: "_id",
         as: "user",
-        pipline: [
+        pipeline: [
           {
             $project: {
               _id: 1,
@@ -256,7 +266,7 @@ const deleteMember = AsyncHandler(async (req, res) => {
   projectMember = await ProjectMember.findByIdAndDelete(projectMember._id);
   return res
     .status(200)
-    .json(new ApiResponse(200, "Project member is remove successfully   "));
+    .json(new ApiResponse(200, "Project member removed successfully"));
 });
 
 export {
